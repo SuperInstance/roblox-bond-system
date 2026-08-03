@@ -1,0 +1,14 @@
+{
+  "name": "roblox-bond-system",
+  "tree": {
+    "$className": "Folder",
+    "BondSystem": {
+      "$className": "ModuleScript",
+      "$path": "src/BondSystem.lua"
+    }
+  },
+  "globIgnorePaths": [
+    "docs/**",
+    "examples/**"
+  ]
+}
