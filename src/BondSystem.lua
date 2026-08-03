@@ -387,7 +387,9 @@ function BondSystem.init()
     Players.PlayerAdded:Connect(function(player)
         local data = getData(player.Name)
         data.sessionFirstBuild = false
-        data.lastSeen = os.time()
+        -- lastSeen is NOT set here; onPlayerJoin reads the persisted value
+        -- from getData() (which retains lastSeen from the previous session
+        -- if the load hook restores it), then updates it after the return check.
 
         -- Load persisted state if a load hook is wired
         if BondSystem.hooks.load then
@@ -404,7 +406,9 @@ function BondSystem.init()
             end)
         end
 
-        -- Check for return after >24h absence
+        -- Check for return after >24h absence BEFORE updating lastSeen.
+        -- This was dead code before because init() set lastSeen = os.time()
+        -- before calling onPlayerJoin, making absenceSeconds always ~0.
         BondSystem.onPlayerJoin(player.Name)
     end)
 
