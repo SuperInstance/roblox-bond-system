@@ -394,6 +394,344 @@ return function()
         end)
     end)
 
+    -- ── Behavior Trigger Functions ────────────────────────────
+
+    describe("behavior trigger functions", function()
+        it("recordBuild awards first-build bonus once per session", function()
+            local id = "test_recordBuild_session"
+            local before = BondSystem.getPoints(id)
+            BondSystem.recordBuild(id)
+            expect(BondSystem.getPoints(id) - before).to.equal(1)
+            -- Second call in same session should not award bonus
+            local after = BondSystem.getPoints(id)
+            BondSystem.recordBuild(id)
+            expect(BondSystem.getPoints(id)).to.equal(after)
+        end)
+
+        it("recordHookCompleted awards +5 points", function()
+            local id = "test_hook_pts"
+            local before = BondSystem.getPoints(id)
+            BondSystem.recordHookCompleted(id)
+            expect(BondSystem.getPoints(id) - before).to.equal(5)
+        end)
+
+        it("recordHookCompleted with hookId completes the open hook", function()
+            local id = "test_hook_complete"
+            BondSystem.registerOpenHook(id, "hook_a", "desc", Vector3.new(0, 0, 0))
+            expect(BondSystem.hasOpenHooks(id)).to.equal(true)
+            BondSystem.recordHookCompleted(id, "hook_a")
+            -- The hook should now be completed
+            expect(BondSystem.hasOpenHooks(id)).to.equal(false)
+        end)
+
+        it("recordHookCompleted increments hooksCompleted counter", function()
+            local id = "test_hook_counter"
+            BondSystem.recordHookCompleted(id)
+            BondSystem.recordHookCompleted(id)
+            local data = BondSystem.getPlayerData(id)
+            expect(data.hooksCompleted).to.be.greaterThan(1)
+        end)
+
+        it("recordIndependentBuild awards +3 points", function()
+            local id = "test_indep"
+            local before = BondSystem.getPoints(id)
+            BondSystem.recordIndependentBuild(id)
+            expect(BondSystem.getPoints(id) - before).to.equal(3)
+        end)
+
+        it("recordModifyNotReplace awards +2 points", function()
+            local id = "test_modify"
+            local before = BondSystem.getPoints(id)
+            BondSystem.recordModifyNotReplace(id)
+            expect(BondSystem.getPoints(id) - before).to.equal(2)
+        end)
+
+        it("recordArguedAndWon awards +4 points", function()
+            local id = "test_argued"
+            local before = BondSystem.getPoints(id)
+            BondSystem.recordArguedAndWon(id)
+            expect(BondSystem.getPoints(id) - before).to.equal(4)
+        end)
+
+        it("recordReturn does not award if <24h since lastSeen", function()
+            local id = "test_return_short"
+            -- Player was just seen (getData sets lastSeen to os.time())
+            local before = BondSystem.getPoints(id)
+            BondSystem.recordReturn(id)
+            expect(BondSystem.getPoints(id)).to.equal(before)
+        end)
+    end)
+
+    -- ── Hook Callbacks ────────────────────────────────────────
+
+    describe("hook callbacks", function()
+        it("onBondEvent fires when points are awarded", function()
+            local fired = false
+            local receivedEvent = nil
+            local receivedPoints = nil
+            BondSystem.hooks.onBondEvent = function(playerId, eventType, points)
+                if playerId == "test_callback" then
+                    fired = true
+                    receivedEvent = eventType
+                    receivedPoints = points
+                end
+            end
+            BondSystem.addPoints("test_callback", 10)
+            expect(fired).to.equal(true)
+            expect(receivedEvent).to.equal("custom")
+            expect(receivedPoints).to.equal(10)
+            BondSystem.hooks.onBondEvent = nil
+        end)
+
+        it("onTierChanged fires on tier promotion", function()
+            local oldTierReceived = nil
+            local newTierReceived = nil
+            BondSystem.hooks.onTierChanged = function(playerId, oldTier, newTier)
+                if playerId == "test_tier_cb" then
+                    oldTierReceived = oldTier
+                    newTierReceived = newTier
+                end
+            end
+            BondSystem.addPoints("test_tier_cb", 10) -- triggers 0 → 1
+            expect(oldTierReceived).to.equal(0)
+            expect(newTierReceived).to.equal(1)
+            BondSystem.hooks.onTierChanged = nil
+        end)
+
+        it("persist hook fires on setTier", function()
+            local persisted = false
+            local persistedTier = nil
+            BondSystem.hooks.persist = function(playerId, tier, bondPoints)
+                if playerId == "test_persist" then
+                    persisted = true
+                    persistedTier = tier
+                end
+            end
+            BondSystem.setTier("test_persist", 3)
+            expect(persisted).to.equal(true)
+            expect(persistedTier).to.equal(3)
+            BondSystem.hooks.persist = nil
+        end)
+
+        it("onTransitionLine fires on tier change", function()
+            local lineReceived = nil
+            local tierReceived = nil
+            BondSystem.hooks.onTransitionLine = function(playerId, tier, line)
+                if playerId == "test_trans_line" then
+                    lineReceived = line
+                    tierReceived = tier
+                end
+            end
+            BondSystem.addPoints("test_trans_line", 10) -- 0 → 1
+            expect(tierReceived).to.equal(1)
+            expect(lineReceived).to.be.a("string")
+            BondSystem.hooks.onTransitionLine = nil
+        end)
+    end)
+
+    -- ── Event Log ─────────────────────────────────────────────
+
+    describe("event log", function()
+        it("logs events and caps at 20 entries", function()
+            local id = "test_eventlog"
+            for _ = 1, 30 do
+                BondSystem.addPoints(id, 1)
+            end
+            local data = BondSystem.getPlayerData(id)
+            expect(#data.eventLog).to.equal(20)
+        end)
+
+        it("event log entries have event, points, and timestamp", function()
+            local id = "test_eventlog_shape"
+            BondSystem.addPoints(id, 5)
+            local data = BondSystem.getPlayerData(id)
+            local entry = data.eventLog[1]
+            expect(entry.event).to.be.ok()
+            expect(entry.points).to.be.ok()
+            expect(entry.timestamp).to.be.ok()
+        end)
+    end)
+
+    -- ── getPlayerData Snapshot ────────────────────────────────
+
+    describe("getPlayerData", function()
+        it("returns a complete snapshot", function()
+            BondSystem.setTier("test_snapshot", 2)
+            local data = BondSystem.getPlayerData("test_snapshot")
+            expect(data.bondPoints).to.be.a("number")
+            expect(data.tier).to.equal(2)
+            expect(data.tierName).to.equal("Companion")
+            expect(data.tierDescription).to.be.a("string")
+            expect(data.behaviors).to.be.a("table")
+            expect(data.hooksCompleted).to.be.a("number")
+            expect(data.openHookCount).to.be.a("number")
+            expect(data.totalHooks).to.be.a("number")
+            expect(data.lastSeen).to.be.ok()
+            expect(data.eventLog).to.be.a("table")
+            expect(data.progress).to.be.a("table")
+            expect(data.confessionGiven).to.equal(false)
+        end)
+    end)
+
+    -- ── hasTier ───────────────────────────────────────────────
+
+    describe("hasTier", function()
+        it("returns true when player meets the minimum tier", function()
+            BondSystem.setTier("test_hastier_2", 2)
+            expect(BondSystem.hasTier("test_hastier_2", 0)).to.equal(true)
+            expect(BondSystem.hasTier("test_hastier_2", 1)).to.equal(true)
+            expect(BondSystem.hasTier("test_hastier_2", 2)).to.equal(true)
+        end)
+
+        it("returns false when player is below the tier", function()
+            BondSystem.setTier("test_hastier_low", 1)
+            expect(BondSystem.hasTier("test_hastier_low", 2)).to.equal(false)
+            expect(BondSystem.hasTier("test_hastier_low", 3)).to.equal(false)
+        end)
+
+        it("returns true at exact tier 4 check", function()
+            BondSystem.setTier("test_hastier_4", 4)
+            expect(BondSystem.hasTier("test_hastier_4", 4)).to.equal(true)
+        end)
+    end)
+
+    -- ── Additional Behavioral Queries ─────────────────────────
+
+    describe("additional behavioral queries", function()
+        it("shouldUseNicknames is false at tier 1, true at tier 2+", function()
+            BondSystem.setTier("test_nick_1", 1)
+            expect(BondSystem.shouldUseNicknames("test_nick_1")).to.equal(false)
+            BondSystem.setTier("test_nick_2", 2)
+            expect(BondSystem.shouldUseNicknames("test_nick_2")).to.equal(true)
+        end)
+
+        it("shouldReferenceHistory is false at tier 0, true at tier 1+", function()
+            BondSystem.setTier("test_hist_0", 0)
+            expect(BondSystem.shouldReferenceHistory("test_hist_0")).to.equal(false)
+            BondSystem.setTier("test_hist_1", 1)
+            expect(BondSystem.shouldReferenceHistory("test_hist_1")).to.equal(true)
+        end)
+
+        it("shouldVolunteerWork is false at tier 1, true at tier 2+", function()
+            BondSystem.setTier("test_volun_1", 1)
+            expect(BondSystem.shouldVolunteerWork("test_volun_1")).to.equal(false)
+            BondSystem.setTier("test_volun_2", 2)
+            expect(BondSystem.shouldVolunteerWork("test_volun_2")).to.equal(true)
+        end)
+
+        it("shouldAskPlayerToBuild is false at tier 2, true at tier 3+", function()
+            BondSystem.setTier("test_ask_2", 2)
+            expect(BondSystem.shouldAskPlayerToBuild("test_ask_2")).to.equal(false)
+            BondSystem.setTier("test_ask_3", 3)
+            expect(BondSystem.shouldAskPlayerToBuild("test_ask_3")).to.equal(true)
+        end)
+
+        it("shouldRefuseWork is false at tier 2, true at tier 3+", function()
+            BondSystem.setTier("test_refuse_2", 2)
+            expect(BondSystem.shouldRefuseWork("test_refuse_2")).to.equal(false)
+            BondSystem.setTier("test_refuse_3", 3)
+            expect(BondSystem.shouldRefuseWork("test_refuse_3")).to.equal(true)
+        end)
+
+        it("shouldDelegate is false at tier 3, true at tier 4", function()
+            BondSystem.setTier("test_deleg_3", 3)
+            expect(BondSystem.shouldDelegate("test_deleg_3")).to.equal(false)
+            BondSystem.setTier("test_deleg_4", 4)
+            expect(BondSystem.shouldDelegate("test_deleg_4")).to.equal(true)
+        end)
+    end)
+
+    -- ── Customization Functions ───────────────────────────────
+
+    describe("customization", function()
+        it("setTierNames overrides names", function()
+            BondSystem.setTierNames({
+                [0] = "Outsider",
+                [1] = "Known",
+                [2] = "Friendly",
+                [3] = "Inner",
+                [4] = "Family",
+            })
+            local names = BondSystem.getTierNames()
+            expect(names[0]).to.equal("Outsider")
+            expect(names[4]).to.equal("Family")
+            -- Restore defaults
+            BondSystem.setTierNames({
+                [0] = "Stranger",
+                [1] = "Acquaintance",
+                [2] = "Companion",
+                [3] = "Trusted",
+                [4] = "Ally",
+            })
+        end)
+
+        it("setTransitionLines sets custom lines", function()
+            BondSystem.setTransitionLines(1, { "Custom transition!" })
+            local lineReceived = nil
+            BondSystem.hooks.onTransitionLine = function(playerId, tier, line)
+                if playerId == "test_custom_lines" then
+                    lineReceived = line
+                end
+            end
+            BondSystem.addPoints("test_custom_lines", 10)
+            expect(lineReceived).to.equal("Custom transition!")
+            BondSystem.hooks.onTransitionLine = nil
+        end)
+
+        it("setThresholds changes tier boundaries", function()
+            BondSystem.setThresholds({
+                [0] = 0,
+                [1] = 5,
+                [2] = 15,
+                [3] = 35,
+                [4] = 75,
+            })
+            BondSystem.addPoints("test_custom_thresh", 5)
+            expect(BondSystem.getTier("test_custom_thresh")).to.equal(1)
+            BondSystem.addPoints("test_custom_thresh", 10) -- total 15
+            expect(BondSystem.getTier("test_custom_thresh")).to.equal(2)
+            -- Restore defaults
+            BondSystem.setThresholds({
+                [0] = 0,
+                [1] = 10,
+                [2] = 30,
+                [3] = 70,
+                [4] = 150,
+            })
+        end)
+    end)
+
+    -- ── Multiple Tier Transitions ─────────────────────────────
+
+    describe("multi-tier progression", function()
+        it("can progress through all tiers via behavior triggers", function()
+            local id = "test_full_progression"
+            -- Tier 0 → 1 (need 10 points)
+            BondSystem.recordBuild(id)           -- +1
+            BondSystem.recordIndependentBuild(id) -- +3
+            BondSystem.recordModifyNotReplace(id) -- +2
+            BondSystem.recordArguedAndWon(id)     -- +4  = 10 → tier 1
+            expect(BondSystem.getTier(id)).to.equal(1)
+
+            -- Tier 1 → 2 (need 30 points, have 10)
+            BondSystem.recordHookCompleted(id)    -- +5 = 15
+            BondSystem.recordHookCompleted(id)    -- +5 = 20
+            BondSystem.recordHookCompleted(id)    -- +5 = 25
+            BondSystem.recordIndependentBuild(id) -- +3 = 28
+            BondSystem.recordModifyNotReplace(id) -- +2 = 30 → tier 2
+            expect(BondSystem.getTier(id)).to.equal(2)
+        end)
+
+        it("addPoints with large negative after reaching tier 4 floors at tier 4", function()
+            local id = "test_floor_tier4"
+            BondSystem.setTier(id, 4)
+            expect(BondSystem.getPoints(id)).to.equal(150)
+            BondSystem.addPoints(id, -1000)
+            expect(BondSystem.getPoints(id)).to.equal(150) -- floored
+            expect(BondSystem.getTier(id)).to.equal(4)
+        end)
+    end)
+
     -- ── Extreme Values ────────────────────────────────────────
 
     describe("extreme values", function()
