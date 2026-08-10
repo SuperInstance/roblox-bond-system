@@ -2,6 +2,10 @@
 
 Tests run outside of Roblox Studio using the custom [TestKit](../testkit/init.lua) framework, which mocks `game:GetService("Players")`, `typeof()`, `Vector3`, and `task.spawn`.
 
+> *Those 63 playtests clearly fine-tuned this rhythm, smoothing out any awkward jumps between formal NPC small talk and intimate disclosures.*
+>
+> — Seed Mini
+
 ## Files
 
 | File | Focus | Key Tests |
@@ -26,6 +30,16 @@ Tests run outside of Roblox Studio using the custom [TestKit](../testkit/init.lu
 - ✅ Integration hooks (onTierChanged, onBondEvent)
 - ✅ Event log (capped at 20 entries)
 - ✅ API completeness audit (41 exported functions)
+
+---
+
+## Fleet Testing Connections
+
+- [roblox-beatclock](https://github.com/SuperInstance/roblox-beatclock/tests) — 55 tests, the same TestKit philosophy
+- [roblox-filtergate](https://github.com/SuperInstance/roblox-filtergate) — 90 Lua tests, the fleet's most thoroughly tested Roblox module
+- [cns-bridge](https://github.com/SuperInstance/cns-bridge) — 270 Python tests, the gold standard
+- [voxel-logic](https://github.com/SuperInstance/voxel-logic) — 99.7% test coverage
+- [mud-engine](https://github.com/SuperInstance/mud-engine) — 285 files, thoroughly tested room engine
 
 ---
 

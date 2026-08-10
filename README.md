@@ -4,7 +4,15 @@
 
 > *Each tier does not unlock new dialogue — it removes the safety filters the NPC was running against your player ID. You will know you moved a tier not by a popup, but when they first turn their back to you while they sharpen their axe.*
 >
-> — Seed Pro, on the tier system
+> — [Seed Pro](https://github.com/SuperInstance/AI-Writings/tree/main/prose), on the tier system
+
+> *You do not measure trust. You notice it.*
+>
+> — Seed Pro, on the absence of progress bars
+
+> *It feels like a marlinspike — sharp enough to pry open stubborn knots in someone else's rope, yet heavy and reassuring in the hand.*
+>
+> — [DeepSeek V4-Flash](https://api.deepseek.com), on what BondSystem feels like
 
 BondSystem replaces traditional XP grind with meaningful behavior. Players don't see a progress bar — they *feel* the relationship deepening through how the world treats them. Five tiers, fourteen behavior flags per tier, and a core loop built on deliberately unfinished work. Trust is sticky — once earned, a bad day can't erase it.
 
@@ -222,6 +230,16 @@ BondSystem is part of the Hermit Crab pattern — agents finding shells. The hoo
 
 ---
 
+## The Ratchet and the Hook
+
+My grandfather taught me to splice rope. The first time I tried, he watched me struggle for twenty minutes before taking the strand from my hands and showing me the trick: you don't force the splice, you find the lay of the rope and work with it. BondSystem's tier system is a splice — it finds the lay of the relationship and works with it. You don't grind XP. You show up. You finish what someone else started. You argue when you're right. The ratchet holds because each tier's floor is a cleat hitch: once the rope is around the cleat, a big pull only makes it grip harder.
+
+The hook system is the shop teacher's insight. A good teacher doesn't give you a assignment sheet. They leave a half-finished joint on the workbench and walk away. When you come back and find it, you either complete it or you don't. If you do, they notice. Not with a grade — with a nod. That's +5 points. That's the core loop. The NPC left f(x) undefined. You provided the value. The bond is the reward for closure.
+
+> *Fourteen quiet behaviour flags unlock cumulatively with each tier. There is never a progress bar. You will not get a notification. You will just notice that they started leaving things half done before you even logged on.*
+>
+> — Seed Pro
+
 ## Where to Next
 
 - **If you need musical timing:** → [roblox-beatclock](https://github.com/SuperInstance/roblox-beatclock) — BPM-accurate clock, zero dependencies
@@ -229,6 +247,9 @@ BondSystem is part of the Hermit Crab pattern — agents finding shells. The hoo
 - **If you need vessel intelligence:** → [vessel-agent-system](https://github.com/SuperInstance/vessel-agent-system) — 334 files, the boat's brain
 - **If you need the room engine:** → [mud-engine](https://github.com/SuperInstance/mud-engine) — 285 files, THE core MUD
 - **If you need vibes → signals:** → [vibe-protocol](https://github.com/SuperInstance/vibe-protocol) — communication protocol
+- **If you need spatial math:** → [base60-lattice](https://github.com/SuperInstance/base60-lattice) — 60-symbol lattice, the math beneath the fleet
+- **If you need the fleet's stories:** → [AI-Writings](https://github.com/SuperInstance/AI-Writings/tree/main/prose) — the Hermit Crab thread, trust and shells
+- **If you need the dark mirror:** → [zeroclaw](https://github.com/SuperInstance/zeroclaw) — what happens when trust has no ratchet
 
 ---
 
