@@ -1,23 +1,16 @@
 # BondSystem
 
-**A behavior-triggered relationship module for Roblox.**
+> *No visible progress bar. No XP grind. You feel the relationship change because the world starts treating you differently.*
+>
+> **Behavior-triggered relationship engine for Roblox. Five tiers. Zero dependencies. 63 tests.**
 
-BondSystem replaces traditional XP grind with meaningful behavior. Players don't see a progress bar — they *feel* the relationship deepening through how the world treats them.
-
----
-
-## Why Not XP?
-
-XP systems reduce relationships to a number ticking upward. BondSystem takes a different approach:
-
-- **No visible progress bar.** Players never see "47/70 to next tier." They notice the relationship has changed because the NPC starts treating them differently.
-- **Behavior drives progression.** Completing tasks, showing independence, pushing back in disagreement — these are what deepen bonds, not repetitive grinding.
-- **Each tier changes behavior, not stats.** Going from tier 2 to tier 3 doesn't give +5 strength. It means the NPC starts saying "we" instead of "I," asks the player for help, and refuses work because they think the player would do it better.
-- **Negative events are floored.** You can't drop below your current tier. Once trust is earned, a bad day doesn't erase it.
+BondSystem replaces traditional reputation grinding with **meaningful behavior**. Players don't see "47/70 to next tier." They notice the NPC starts saying "we" instead of "I," argues with them, volunteers help, and eventually stops holding things back.
 
 ---
 
 ## The Five Tiers
+
+Trust is a ladder with sticky rungs. Once you've held a tier, a bad day can't take it away.
 
 | Tier | Name | Points | What Changes |
 |------|------|--------|--------------|
@@ -25,13 +18,42 @@ XP systems reduce relationships to a number ticking upward. BondSystem takes a d
 | 1 | **Acquaintance** | 10–29 | Drops formality. References previous interactions. Asks questions. |
 | 2 | **Companion** | 30–69 | Argues with you. Volunteers help. Uses nicknames. |
 | 3 | **Trusted** | 70–149 | Says "we." Asks you to do things. May refuse work. Remembers what you said. |
-| 4 | **Ally** | 150+ | Full honesty. Delegates to you. Stops holding things back. |
+| 4 | **Ally** | 150+ | Full honesty. Delegates to you. Stops holding things back. One-time confession. |
+
+Each tier is a hard floor, not a soft slope. Negative events cannot drag a bond past the tier it has already held fast through — just as a properly tied mooring will not slip below the cleat it was fastened to.
+
+---
+
+## Why Not XP?
+
+XP systems reduce relationships to a number ticking upward. BondSystem takes a different approach:
+
+- **No visible progress bar.** The player feels trust through NPC behavior changes, not UI notifications.
+- **Behavior drives progression.** Completing unfinished work, building independently, arguing and winning — these are what deepen bonds.
+- **Each tier changes behavior, not stats.** Going from tier 2 to tier 3 doesn't give +5 strength. It means the NPC starts saying "we" and asks the player for help.
+- **Negative events are floored.** Once trust is earned, a bad day doesn't erase it. Trust is sticky.
+
+---
+
+## The Core Loop: Hooks
+
+The heart of BondSystem is the **hook system** — a gameplay loop that rewards curiosity and investment:
+
+```
+Entity leaves work unfinished
+    → registerOpenHook(playerId, hookId, description, position)
+    → Player explores and finds the unfinished work
+    → Player completes it
+    → checkHookProximity(playerId, buildPosition) detects it
+    → recordHookCompleted(playerId, hookId)
+    → +5 bond points (the largest single reward)
+```
+
+This is not grinding. The NPC leaves a torn net on the deck, a jammed winch, a half-baited line. You don't get paid for noticing it — you get paid in the shared rhythm of fixing it. The NPC doesn't thank you with a progress bar. They just start handing you the good knife instead of the dull one.
 
 ---
 
 ## Behavior Triggers
-
-These are the events that generate bond points:
 
 | Event | Points | Description |
 |-------|--------|-------------|
@@ -43,51 +65,7 @@ These are the events that generate bond points:
 | `returned_next_day` | +2 | Came back after 24+ hours |
 | `deleted_without_inspection` | -1 | Dismissed work without looking (floored at current tier) |
 
-### The Hook System
-
-The **core loop** of BondSystem is the hook:
-
-1. An entity leaves something deliberately unfinished (a wall without a roof, a path that stops short).
-2. This is registered as an "open hook."
-3. When the player completes it, `recordHookCompleted()` fires — the biggest single bond reward (+5).
-4. This rewards curiosity and investment, not just task completion.
-
-You can register hooks with world positions and use `checkHookProximity()` to auto-detect when a player builds near an unfinished area.
-
----
-
-## Hook Mechanics
-
-The hooks table is the integration point. Wire up your own systems:
-
-```lua
-local BondSystem = require(script.Parent.BondSystem)
-
-BondSystem.hooks.onTierChanged = function(playerId, oldTier, newTier)
-    -- Fire a cutscene, change NPC dialogue, unlock a quest, etc.
-    print(playerId .. " is now tier " .. newTier)
-end
-
-BondSystem.hooks.onBondEvent = function(playerId, eventType, points)
-    -- Analytics, achievements, sound effects
-end
-
-BondSystem.hooks.onTransitionLine = function(playerId, tier, line)
-    -- Display the transition line via your dialogue system
-    print("[NPC]: " .. line)
-end
-
-BondSystem.hooks.persist = function(playerId, tier, bondPoints)
-    -- Save to DataStore, your API, wherever
-end
-
-BondSystem.hooks.load = function(playerId)
-    -- Return stored tier and points
-    return 2, 45  -- or nil if no saved data
-end
-```
-
-All hooks are optional. If you don't wire them up, BondSystem runs in-memory only.
+Add custom events with `registerEventType(name, points)` or `addPoints(playerId, amount)`.
 
 ---
 
@@ -96,20 +74,19 @@ All hooks are optional. If you don't wire them up, BondSystem runs in-memory onl
 ```lua
 local BondSystem = require(script.Parent.BondSystem)
 
--- 1. Initialize (auto-hooks Players.PlayerAdded/Removing)
 BondSystem.init()
 
--- 2. Record behaviors
-BondSystem.recordBuild("Player1")           -- +1 (first build this session)
-BondSystem.recordHookCompleted("Player1")   -- +5 (finished an open hook)
-BondSystem.recordIndependentBuild("Player1") -- +3 (built without being asked)
+-- Record behaviors
+BondSystem.recordBuild("Player1")             -- +1 (first build this session)
+BondSystem.recordHookCompleted("Player1")      -- +5 (finished an open hook)
+BondSystem.recordIndependentBuild("Player1")   -- +3 (built without being asked)
 
--- 3. Query relationship state
-local tier = BondSystem.getTier("Player1")          -- 1 (Acquaintance)
-local name = BondSystem.getTierName("Player1")      -- "Acquaintance"
+-- Query relationship state
+local tier = BondSystem.getTier("Player1")            -- 1 (Acquaintance)
+local name = BondSystem.getTierName("Player1")        -- "Acquaintance"
 local behaviors = BondSystem.getBehaviors("Player1")
 
--- 4. Branch behavior based on tier
+-- Branch behavior based on tier
 if behaviors.argues then
     -- NPC will disagree with the player now
 end
@@ -120,14 +97,95 @@ end
 
 ---
 
+## Hook System: Integration Point
+
+Wire up your own systems through the `hooks` table:
+
+```lua
+BondSystem.hooks.onTierChanged = function(playerId, oldTier, newTier)
+    -- Fire a cutscene, change NPC dialogue, unlock a quest
+end
+
+BondSystem.hooks.onBondEvent = function(playerId, eventType, points)
+    -- Analytics, achievements, sound effects
+end
+
+BondSystem.hooks.onTransitionLine = function(playerId, tier, line)
+    -- Display the transition line via your dialogue system
+end
+
+BondSystem.hooks.persist = function(playerId, tier, bondPoints)
+    -- Save to DataStore, your API, wherever
+end
+
+BondSystem.hooks.load = function(playerId)
+    -- Return stored tier and points
+    return 2, 45
+end
+```
+
+All hooks are optional. Without them, BondSystem runs in-memory only.
+
+---
+
+## Tier Behaviors
+
+Each tier has 14 boolean behavior flags — cumulative as trust deepens:
+
+| Flag | T0 | T1 | T2 | T3 | T4 |
+|------|----|----|----|----|----|
+| `uses_formal_address` | ✓ | | | | |
+| `references_previous_builds` | | ✓ | ✓ | ✓ | ✓ |
+| `asks_questions` | | ✓ | ✓ | ✓ | ✓ |
+| `shares_opinions` | | ✓ | ✓ | ✓ | ✓ |
+| `argues` | | | ✓ | ✓ | ✓ |
+| `volunteers_work` | | | ✓ | ✓ | ✓ |
+| `uses_nicknames` | | | ✓ | ✓ | ✓ |
+| `uses_we` | | | | ✓ | ✓ |
+| `asks_player_to_build` | | | | ✓ | ✓ |
+| `refuses_work` | | | | ✓ | ✓ |
+| `remembers_conversation` | | | | ✓ | ✓ |
+| `leaves_things_unfinished` | ✓ | ✓ | ✓ | ✓ | |
+| `confesses_pattern` | | | | | ✓ |
+| `delegates_to_player` | | | | | ✓ |
+
+Query them with `getBehaviors(playerId)` or convenience methods like `shouldUseWe(playerId)`, `argumentsUnlocked(playerId)`, `shouldDelegate(playerId)`.
+
+---
+
+## Installation
+
+### With Rojo
+
+1. Copy [`src/BondSystem.lua`](src/BondSystem.lua) into your project.
+2. Add to your `default.project.json`:
+
+```json
+{
+  "ServerScriptService": {
+    "BondSystem": {
+      "$path": "../roblox-bond-system/src/BondSystem.lua"
+    }
+  }
+}
+```
+
+### Manual
+
+1. Create a `ModuleScript` in `ServerScriptService`.
+2. Paste the contents of [`src/BondSystem.lua`](src/BondSystem.lua).
+3. `require()` it from your server scripts.
+
+---
+
 ## API Reference
 
 ### Lifecycle
 
 | Method | Description |
 |--------|-------------|
-| `BondSystem.init()` | Initialize. Hooks into player join/leave. |
-| `BondSystem.onPlayerJoin(playerId)` | Call on manual join handling. Checks return-after-absence. |
+| [`init()`](src/BondSystem.lua) | Initialize. Hooks into `Players.PlayerAdded/Removing`. |
+| [`onPlayerJoin(playerId)`](src/BondSystem.lua) | Manual join handling. Checks return-after-absence. |
 
 ### Behavior Triggers
 
@@ -140,47 +198,29 @@ end
 | `recordArguedAndWon(playerId)` | +4 | Argued back and won. |
 | `recordReturn(playerId)` | +2 | Returned after 24h+ absence. |
 | `recordDeleteWithoutInspection(playerId)` | -1 | Deleted without looking. |
-| `addPoints(playerId, amount)` | custom | Raw points (any custom event). |
+| `addPoints(playerId, amount)` | custom | Raw points. |
 | `fireEvent(playerId, eventType)` | varies | Fire any registered event type. |
 
 ### Hook Management
 
 | Method | Description |
 |--------|-------------|
-| `registerOpenHook(playerId, hookId, description, position?)` | Register unfinished work for the player to discover. |
-| `hasOpenHooks(playerId)` | Boolean — are there unfinished hooks? |
+| `registerOpenHook(playerId, hookId, description, position?)` | Register unfinished work. |
+| `hasOpenHooks(playerId)` | Boolean. |
 | `getOpenHooks(playerId)` | Table of all open hooks. |
-| `checkHookProximity(playerId, position)` | Returns hookId if near an open hook (within 30 studs). |
+| `checkHookProximity(playerId, position)` | Returns hookId if within 30 studs. |
 
 ### Tier & Behavior Queries
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `getTier(playerId)` | `number` (0–4) | Current tier. |
-| `getPoints(playerId)` | `number` | Total bond points. |
-| `getTierName(playerId)` | `string` | Tier name (e.g. "Ally"). |
-| `getBehaviors(playerId)` | `table` | All behavior flags for current tier. |
-| `getProgress(playerId)` | `table` | Progress to next tier (internal/admin). |
-| `getPlayerData(playerId)` | `table` | Full bond state snapshot. |
-| `hasTier(playerId, minTier)` | `boolean` | Check minimum tier. |
-
-### Behavioral Queries
-
-Each returns a boolean for branching NPC/AI behavior:
-
-| Method | Unlocks At |
-|--------|------------|
-| `shouldUseWe(playerId)` | Tier 3+ |
-| `argumentsUnlocked(playerId)` | Tier 2+ |
-| `shouldUseNicknames(playerId)` | Tier 2+ |
-| `shouldReferenceHistory(playerId)` | Tier 1+ |
-| `shouldVolunteerWork(playerId)` | Tier 2+ |
-| `shouldAskPlayerToBuild(playerId)` | Tier 3+ |
-| `shouldRefuseWork(playerId)` | Tier 3+ |
-| `shouldDelegate(playerId)` | Tier 4 |
-| `leavesThingsUnfinished(playerId)` | Tier 0–3 (true), Tier 4 (false) |
-| `shouldDeliverConfession(playerId)` | Tier 4, not yet delivered |
-| `markConfessionDelivered(playerId)` | One-time flag. |
+| Method | Returns |
+|--------|---------|
+| `getTier(playerId)` | `number` (0–4) |
+| `getPoints(playerId)` | `number` |
+| `getTierName(playerId)` | `string` |
+| `getBehaviors(playerId)` | behavior flags table |
+| `getProgress(playerId)` | progress to next tier (admin) |
+| `getPlayerData(playerId)` | full state snapshot |
+| `hasTier(playerId, minTier)` | `boolean` |
 
 ### Customization
 
@@ -188,237 +228,80 @@ Each returns a boolean for branching NPC/AI behavior:
 |--------|-------------|
 | `setTierNames(names)` | Override tier names. Call before `init()`. |
 | `setTierDescriptions(descriptions)` | Override tier descriptions. |
-| `setTransitionLines(tier, lines)` | Custom dialogue for tier transitions. |
+| `setTransitionLines(tier, lines)` | Custom dialogue for transitions. |
 | `setThresholds(thresholds)` | Custom point thresholds. Call before `init()`. |
 | `registerEventType(name, points)` | Add a custom event type. |
 
-### Admin
+---
 
-| Method | Description |
-|--------|-------------|
-| `setTier(playerId, tier)` | Force-set tier (debug/admin). |
-| `getThresholds()` | Get tier threshold table. |
-| `getTierNames()` | Get tier names table. |
+## Testing
+
+| Test File | Lines | What It Covers |
+|-----------|-------|----------------|
+| [`tests/bondsystem_test.lua`](tests/bondsystem_test.lua) | 164 | Module structure, init, tier computation, point awards, tier transitions, negative events flooring |
+| [`tests/bondsystem_extended_test.lua`](tests/bondsystem_extended_test.lua) | 623 | All behavior triggers, hook management, proximity detection, behavioral queries, customization, persistence hooks, multi-faction, edge cases |
+| [`spec/BondSystem_spec.lua`](spec/BondSystem_spec.lua) | 759 | TestEZ-format spec — comprehensive coverage including session management, confession delivery, event log, long-session scenarios |
+
+**63 tests total.** Run with:
+
+```bash
+LUA_PATH="?.lua;testkit/?.lua;?/init.lua" lua5.1 tests/bondsystem_test.lua
+LUA_PATH="?.lua;testkit/?.lua;?/init.lua" lua5.1 tests/bondsystem_extended_test.lua
+```
 
 ---
 
 ## Examples
 
-### 1. NPC Friendship
-
-An NPC that warms up to the player through repeated positive interactions.
-
-```lua
-local BondSystem = require(script.Parent.BondSystem)
-
--- Customize for a blacksmith NPC
-BondSystem.setTierNames({
-    [0] = "Stranger",
-    [1] = "Known Face",
-    [2] = "Friendly",
-    [3] = "Old Friend",
-    [4] = "Sworn Brother",
-})
-
-BondSystem.hooks.onTransitionLine = function(playerId, tier, line)
-    local player = game.Players:FindFirstChild(playerId)
-    if player then
-        -- Display via your dialogue GUI
-        showDialogue(player, "Blacksmith", line)
-    end
-end
-
-BondSystem.init()
-
--- When the player brings ore to the blacksmith
-BondSystem.recordBuild(player.Name)
-
--- When the player forges something independently
-BondSystem.recordIndependentBuild(player.Name)
-```
-
-### 2. Quest Giver Trust
-
-A quest giver who only offers high-stakes quests to trusted players.
-
-```lua
-local BondSystem = require(script.Parent.BondSystem)
-BondSystem.init()
-
-function offerQuest(player, questId)
-    if questId == "dragon_slayer" and not BondSystem.hasTier(player.Name, 3) then
-        showDialogue(player, "QuestMaster",
-            "You're not ready for that. Come back when you've proven yourself.")
-        return
-    end
-
-    -- Offer the quest
-    startQuest(player, questId)
-end
-
--- Completing quests builds trust
-function onQuestCompleted(player, questId)
-    BondSystem.recordHookCompleted(player.Name, questId)
-end
-```
-
-### 3. Companion AI
-
-An AI companion whose combat behavior changes with bond level.
-
-```lua
-local BondSystem = require(script.Parent.BondSystem)
-BondSystem.init()
-
-function getCompanionBehavior(playerId)
-    local behaviors = BondSystem.getBehaviors(playerId)
-
-    return {
-        -- At tier 0, companion fights independently
-        -- At tier 2+, they coordinate with player
-        coordinateAttacks = behaviors.argues,  -- willing to disagree = willing to coordinate
-        -- At tier 3+, they protect the player proactively
-        proactiveDefense = behaviors.uses_we,
-        -- At tier 4, they follow player's lead entirely
-        deferToPlayer = behaviors.delegates_to_player,
-        -- At tier 2+, they use casual banter
-        useNicknames = behaviors.uses_nicknames,
-    }
-end
-```
-
-### 4. Faction Reputation
-
-Track standing with multiple factions using separate BondSystem instances.
-
-```lua
--- BondSystem is a module, so you can require it multiple times
--- and use playerId as "factionId:playerName" to namespace.
-
-local BondSystem = require(script.Parent.BondSystem)
-
--- Customize for the Merchants Guild
-BondSystem.setTierNames({
-    [0] = "Outsider",
-    [1] = "Recognized",
-    [2] = "Member",
-    [3] = "Trader",
-    [4] = "Guildmaster",
-})
-
-BondSystem.init()
-
--- Use compound keys for faction tracking
-local function makeFactionKey(factionId, playerId)
-    return factionId .. ":" .. playerId
-end
-
-function onTradeCompleted(player, factionId)
-    local key = makeFactionKey(factionId, player.Name)
-    BondSystem.recordBuild(key)
-end
-
-function getFactionStanding(player, factionId)
-    local key = makeFactionKey(factionId, player.Name)
-    return BondSystem.getTierName(key), BondSystem.getTier(key)
-end
-```
-
-### 5. Mentor-Student Progression
-
-A mentor who gradually delegates more responsibility as trust builds.
-
-```lua
-local BondSystem = require(script.Parent.BondSystem)
-
-BondSystem.setTierNames({
-    [0] = "Novice",
-    [1] = "Student",
-    [2] = "Apprentice",
-    [3] = "Journeyman",
-    [4] = "Master",
-})
-
-BondSystem.hooks.onTierChanged = function(playerId, oldTier, newTier)
-    local player = game.Players:FindFirstChild(playerId)
-    if not player then return end
-
-    if newTier == 2 then
-        -- Unlock advanced techniques
-        grantAbility(player, "AdvancedCrafting")
-    elseif newTier == 3 then
-        -- Mentor starts giving solo assignments
-        grantAbility(player, "SoloQuests")
-    elseif newTier == 4 then
-        -- Full delegation — mentor steps back
-        showDialogue(player, "Mentor",
-            "You don't need me watching anymore. Take the workshop. It's yours.")
-        grantAbility(player, "WorkshopOwnership")
-    end
-end
-
-BondSystem.init()
-
--- Student completes a lesson
-function onLessonCompleted(player)
-    BondSystem.recordHookCompleted(player.Name)
-end
-
--- Student practices independently
-function onIndependentPractice(player)
-    BondSystem.recordIndependentBuild(player.Name)
-end
-
--- Student corrects the mentor (rare and powerful)
-function onStudentCorrection(player)
-    BondSystem.recordArguedAndWon(player.Name)
-end
-```
+| Example | What It Does |
+|---------|-------------|
+| [`npc-friendship.lua`](examples/npc-friendship.lua) | NPC that warms up through repeated positive interactions. |
+| [`companion-ai.lua`](examples/companion-ai.lua) | AI companion whose combat behavior, dialogue, and autonomy change with bond level. |
+| [`bond_progression.lua`](examples/bond_progression.lua) | Quest giver who only offers high-stakes quests to trusted players. |
+| [`tier_gating.lua`](examples/tier_gating.lua) | Faction reputation with separate tiers per faction. |
 
 ---
 
-## Persistence
+## Documentation
 
-BondSystem is in-memory by default. To persist across sessions, wire up the `persist` and `load` hooks:
-
-### DataStore Example
-
-```lua
-local DataStoreService = game:GetService("DataStoreService")
-local bondStore = DataStoreService:GetDataStore("BondSystem")
-
-BondSystem.hooks.persist = function(playerId, tier, bondPoints)
-    pcall(function()
-        bondStore:SetAsync(playerId, { tier = tier, points = bondPoints })
-    end)
-end
-
-BondSystem.hooks.load = function(playerId)
-    local data = bondStore:GetAsync(playerId)
-    if data then
-        return data.tier, data.points
-    end
-    return nil, nil
-end
-```
+| Document | Description |
+|----------|-------------|
+| [User Guide](docs/user-guide.md) | Beginner-friendly walkthrough |
+| [Engineering Manual](docs/engineering-manual.md) | Architecture, trigger system, persistence patterns, testing strategy |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| [TestKit](testkit/init.lua) | Minimal Lua test framework for running Roblox tests outside Studio |
 
 ---
 
-## Installation
+## In the Fleet
 
-### With Rojo
+BondSystem is the relationship layer for the [SuperInstance](https://github.com/SuperInstance) fleet. It connects to:
 
-1. Copy `src/BondSystem.lua` into your project's `src/` directory.
-2. Use the `default.project.json` as your Rojo project file, or merge the tree into your existing project.
+- [**roblox-beatclock**](https://github.com/SuperInstance/roblox-beatclock) — Bonds have rhythm. NPC interactions can be timed to musical beats. The clock provides the grid; bonds provide the meaning.
+- [**roblox-filtergate**](https://github.com/SuperInstance/roblox-filtergate) — Bonds need safety. Transition lines and NPC dialogue pass through content filtering before reaching the player.
+- [**vibe-protocol**](https://github.com/SuperInstance/vibe-protocol) — Vibes become signals. Bond tier changes can emit vibe-protocol packets for fleet-wide awareness.
+- [**vessel-agent-system**](https://github.com/SuperInstance/vessel-agent-system) — The vessel's crew has relationships. BondSystem models trust between the captain and the AI agents that run the ship.
+- [**mud-engine**](https://github.com/SuperInstance/mud-engine) — NPCs in the MUD engine use BondSystem for relationship progression. The hermit crab finds its shell through hooks.
+- [**cns-bridge**](https://github.com/SuperInstance/cns-bridge) — Bond tier changes propagate through the central nervous system bus as events.
+- [**AI-Writings**](https://github.com/SuperInstance/AI-Writings/tree/main/prose) — Narrative explorations of trust, relationship, and the moment someone stops counting.
 
-### Manual
+### The Hermit Crab
 
-1. Create a `ModuleScript` in `ServerScriptService`.
-2. Paste the contents of `src/BondSystem.lua`.
-3. `require()` it from your server scripts.
+In the fleet's operating fiction, the hermit crab finds shells. BondSystem is the shell-finding mechanic: the hook system leaves work unfinished, the player completes it, and the relationship deepens. The crab doesn't measure trust in points — it measures trust in the size of the shell it's willing to inhabit.
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE) — free for personal and commercial use.
+
+---
+
+## Where to Next
+
+- [**roblox-beatclock**](https://github.com/SuperInstance/roblox-beatclock) — The clock that times bond interactions
+- [**roblox-filtergate**](https://github.com/SuperInstance/roblox-filtergate) — Keep bond dialogue safe
+- [**vessel-agent-system**](https://github.com/SuperInstance/vessel-agent-system) — Where bonds meet the open ocean
+- [**vibe-protocol**](https://github.com/SuperInstance/vibe-protocol) — Broadcasting bond states as vibes
+- [**mud-engine**](https://github.com/SuperInstance/mud-engine) — NPCs with bonds in the room engine
