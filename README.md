@@ -249,7 +249,7 @@ The hook system is the shop teacher's insight. A good teacher doesn't give you a
 - **If you need vibes → signals:** → [vibe-protocol](https://github.com/SuperInstance/vibe-protocol) — communication protocol
 - **If you need spatial math:** → [base60-lattice](https://github.com/SuperInstance/base60-lattice) — 60-symbol lattice, the math beneath the fleet
 - **If you need the fleet's stories:** → [AI-Writings](https://github.com/SuperInstance/AI-Writings/tree/main/prose) — the Hermit Crab thread, trust and shells
-- **If you need the dark mirror:** → [zeroclaw](https://github.com/SuperInstance/zeroclaw) — what happens when trust has no ratchet
+- **If you need the dark mirror:** → [zeroclaw](https://github.com/SuperInstance/zeroclaw-dissertation) — what happens when trust has no ratchet
 
 ---
 
